@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="vi"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1B3A6B">
+<title>CS Wind IM - Theo dõi tiến độ ống</title>
+<style>
+  :root{
+    --navy:#1B3A6B;
+    --blue:#2E75B6;
+    --orange:#E87722;
+    --bg:#F2F4F7;
+    --card:#FFFFFF;
+    --text:#1F2937;
+    --muted:#6B7280;
+    --border:#E2E8F0;
+    --green:#1E8E3E;
+    --red:#D93025;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0; font-family:"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--bg); color:var(--text);
+    padding-bottom:calc(40px + env(safe-area-inset-bottom));
+    padding-left:env(safe-area-inset-left);
+    padding-right:env(safe-area-inset-right);
+    min-height:100vh;
+  }
+  header{
+    background:linear-gradient(135deg,var(--navy),var(--blue));
+    color:#fff; padding:calc(14px + env(safe-area-inset-top)) 16px 14px; text-align:center;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  header h1{margin:0; font-size:clamp(16px,4vw,20px);}
+  header p{margin:4px 0 0; font-size:13px; opacity:.9;}
+  .wrap{width:100%; max-width:600px; margin:16px auto; padding:0 12px;}
+  .card{background:var(--card); border-radius:12px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:16px; border:1px solid var(--border);}
+  .card h2{margin:0 0 14px; font-size:15px; color:var(--navy); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  label{display:block; font-size:13px; font-weight:600; margin:14px 0 6px; color:var(--navy);}
+  label .req{color:var(--red);}
+  select, input[type=date], input[type=text], textarea{
+    width:100%; padding:12px; border:1px solid var(--border); border-radius:8px;
+    font-size:16px; background:#fff; color:var(--text); -webkit-appearance:none; appearance:none;
+    min-height:46px;
+  }
+  select{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='9'><path d='M1 1l6 6 6-6' stroke='%236B7280' stroke-width='2' fill='none' fill-rule='evenodd'/></svg>");
+    background-repeat:no-repeat; background-position:right 14px center; padding-right:36px;
+  }
+  select:disabled{background-color:#F3F4F6; color:var(--muted);}
+  textarea{resize:vertical; min-height:60px; -webkit-appearance:none; appearance:none;}
+
+  .chip-group{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{
+    padding:12px 14px; border-radius:8px; border:1px solid var(--border); background:#fff;
+    font-size:14px; font-weight:600; cursor:pointer; color:var(--text); transition:.15s;
+    flex:1 1 auto; text-align:center; min-width:70px; min-height:44px;
+    display:flex; align-items:center; justify-content:center; touch-action:manipulation;
+  }
+  .chip.active{background:var(--blue); color:#fff; border-color:var(--blue);}
+  .chip:hover:not(.active){border-color:var(--blue);}
+  .chip.disabled{opacity:.4; pointer-events:none;}
+
+  .tag-list{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; min-height:0;}
+  .tag{
+    background:#E8F0FE; color:var(--navy); padding:6px 10px; border-radius:14px;
+    font-size:13px; display:flex; align-items:center; gap:6px;
+  }
+  .tag button{background:none; border:none; color:var(--navy); font-weight:700; cursor:pointer; font-size:16px; line-height:1; padding:4px; touch-action:manipulation;}
+  .picker-box{border:1px solid var(--border); border-radius:8px; padding:12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:14px; color:var(--muted); min-height:46px; touch-action:manipulation;}
+  .picker-dropdown{border:1px solid var(--border); border-radius:8px; margin-top:6px; max-height:220px; overflow-y:auto; -webkit-overflow-scrolling:touch; display:none; background:#fff;}
+  .picker-dropdown.open{display:block;}
+  .picker-item{padding:12px; font-size:14px; cursor:pointer; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; min-height:44px; align-items:center; touch-action:manipulation;}
+  .picker-item:last-child{border-bottom:none;}
+  .picker-item:hover{background:#F2F4F7;}
+  .picker-item.selected{background:#E8F0FE; color:var(--navy); font-weight:600;}
+
+  .status-box{
+    margin-top:10px; padding:12px; border-radius:8px; font-size:13px; line-height:1.5;
+    background:#FFF8F0; color:#8A5A00; border:1px solid #FFE1B3;
+  }
+  .status-box.has-progress{background:#E8F0FE; color:var(--navy); border-color:#C7DCF7;}
+
+  button.btn-submit{
+    width:100%; padding:16px; background:var(--orange); color:#fff; margin-top:18px; border:none;
+    border-radius:8px; font-weight:700; font-size:16px; cursor:pointer; box-shadow:0 2px 6px rgba(232,119,34,.4);
+    min-height:52px; touch-action:manipulation;
+  }
+  button.btn-submit:disabled{background:#ccc; box-shadow:none; cursor:not-allowed;}
+  .btn-secondary{background:#fff; color:var(--navy); border:1px solid var(--navy); padding:10px 14px; font-size:13px; border-radius:8px; cursor:pointer; min-height:40px; touch-action:manipulation;}
+
+  .status{margin-top:12px; padding:12px; border-radius:8px; font-size:13px; display:none; line-height:1.5;}
+  .status.ok{background:#E6F4EA; color:var(--green); display:block;}
+  .status.err{background:#FCE8E6; color:var(--red); display:block;}
+  .status.info{background:#E8F0FE; color:var(--blue); display:block;}
+
+  .toprow{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;}
+  .footer-note{text-align:center; font-size:11px; color:var(--muted); margin-top:20px; padding:0 12px;}
+  details summary{cursor:pointer; font-size:13px; color:var(--blue); font-weight:600; padding:4px 0;}
+
+  @media (max-width:360px){
+    .wrap{padding:0 8px;}
+    .card{padding:12px;}
+    .chip{min-width:60px; font-size:13px; padding:10px 8px;}
+  }
+  @media (min-width:700px){
+    .wrap{max-width:640px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CS WIND VIETNAM — IM TEAM</h1>
+  <p>Cập nhật tiến độ thi công ống / Pipe Progress Update</p>
+  <button id="adminToggleBtn" onclick="toggleAdminSection()" style="margin-top:8px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.4); color:#fff; border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer;">⚙ Admin</button>
+</header>
+
+<div class="wrap">
+
+  <div id="adminSection">
+    <!-- CONFIG -->
+    <div class="card" id="configCard">
+      <h2>⚙️ Cấu hình kết nối <span style="font-weight:400;font-size:12px;color:var(--muted);">(1 lần, chỉ Admin)</span></h2>
+      <label>Web App URL</label>
+      <input type="text" id="apiUrl" placeholder="https://script.google.com/macros/s/xxxx/exec">
+      <button class="btn-secondary" style="margin-top:10px;" onclick="saveConfig()">Lưu / Save (dùng thử trên máy này)</button>
+      <div id="configStatus" class="status"></div>
+
+      <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border);">
+        <label style="margin-top:0;">📤 Chia sẻ cho công nhân</label>
+        <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">
+          Tải về 1 file HTML mới đã gắn sẵn URL bên trong — gửi file này (Zalo, email, USB…) cho công nhân.
+          Họ mở lên là vào thẳng màn hình nhập liệu, không thấy khung Cấu hình này.
+        </p>
+        <button class="btn-secondary" style="width:100%;" onclick="exportConfiguredFile()">⬇️ Xuất file cho công nhân</button>
+        <div id="exportStatus" class="status"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div class="card">
+    <h2>📋 Nhập tiến độ</h2>
+
+    <label>Ngày Làm Việc <span class="req">*</span></label>
+    <input type="date" id="date">
+
+    <label>Tên Dự Án <span class="req">*</span></label>
+    <select id="project" onchange="onProjectChange()">
+      <option value="">— Chọn dự án —</option>
+    </select>
+
+    <label>Loại Ống <span class="req">*</span></label>
+    <div class="chip-group" id="pipeTypeGroup"><span style="font-size:13px;color:var(--muted);">— Chọn dự án trước —</span></div>
+
+    <label>Số Ống <span class="req">*</span></label>
+    <select id="pipeId" disabled="" onchange="onPipeSelectionChange()">
+      <option value="">— Chọn dự án + loại ống trước —</option>
+    </select>
+
+    <label>Trưởng Nhóm <span class="req">*</span></label>
+    <select id="leader">
+      <option value="">— Chọn trưởng nhóm —</option>
+    </select>
+
+    <label>Nhóm Viên (nhiều người) <span class="req">*</span></label>
+    <div class="tag-list" id="workerTags"></div>
+    <div class="picker-box" id="workerPickerBox" onclick="toggleWorkerPicker()">
+      <span>+ Chọn công nhân</span><span>▾</span>
+    </div>
+    <div class="picker-dropdown" id="workerPicker"></div>
+
+    <label>Loại Công Việc <span class="req">*</span></label>
+    <div class="chip-group" id="workTypeGroup"></div>
+
+    <div id="statusBox" class="status-box" style="display:none;"></div>
+
+    <label>Hoàn Thành <span class="req">*</span></label>
+    <div class="chip-group" id="completionGroup"></div>
+
+    <label>Vị Trí Ống <span class="req">*</span></label>
+    <div class="chip-group" id="locationGroup"></div>
+
+    <label>Ghi Chú</label>
+    <textarea id="notes" placeholder="Ghi chú thêm nếu có..."></textarea>
+
+    <button class="btn-submit" id="submitBtn" onclick="submitEntry()">✅ Lưu / Save</button>
+    <div id="submitStatus" class="status"></div>
+  </div>
+
+  <div id="adminSection2">
+  <details class="card">
+    <summary>Hướng dẫn cài đặt lần đầu / First-time setup</summary>
+    <div style="margin-top:10px; font-size:13px; line-height:1.7;">
+      1. Tạo Google Sheet mới → Extensions → Apps Script → dán code (.gs được cung cấp riêng).<br>
+      2. Chọn hàm <b>setupSheets</b> trên thanh công cụ → bấm Run (cấp quyền nếu được hỏi). Việc này tự tạo các sheet: Progress, MasterData_Projects, MasterData_Pipes, MasterData_Workers, MasterData_Config.<br>
+      3. Deploy → New deployment → Web app → Execute as: Me → Access: Anyone → Deploy → copy Web App URL.<br>
+      4. Dán URL vào ô Cấu hình phía trên.<br>
+      5. Vào sheet <b>MasterData_Projects</b>, <b>MasterData_Pipes</b> (import danh sách Số Ống từ Excel của anh), <b>MasterData_Workers</b> để cập nhật dữ liệu thật — sửa trực tiếp như Excel, không cần đụng code.
+    </div>
+  </details>
+  </div>
+
+  <p class="footer-note">CS Wind Vietnam — Phú Mỹ 1 — IM Team Tool</p>
+</div>
+
+<script>
+// Luu lai HTML goc, "sach" ngay khi trang vua tai xong (truoc khi bat ky du lieu
+// nao duoc dien vao DOM) - dung lam nguon de "xuat file cho cong nhan" ben duoi,
+// tranh bi dinh theo trang thai admin dang test (VD da chon thu du lieu).
+const ORIGINAL_HTML = document.documentElement.outerHTML;
+
+// Neu file nay duoc "xuat" boi admin (xem nut Xuat file cho cong nhan), dong duoi day
+// se duoc thay bang URL that -> may cua cong nhan mo len la dung ngay, khong can cau hinh.
+const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwdNzR1gyK7c2JWjTIHncfSNU1nNULRGFEBSMrIibc/dev";
+
+const CONFIG_KEY = "csw_im_progress_api_url";
+let META = { projects: [], workers: [], leaders: [], workTypes: [], locations: [], completions: [] };
+let selected = { pipeType: null, workType: null, completion: null, location: null, workers: [] };
+
+function getApiUrl(){ return localStorage.getItem(CONFIG_KEY) || DEFAULT_API_URL || ""; }
+
+function saveConfig(){
+  const url = document.getElementById('apiUrl').value.trim();
+  const statusEl = document.getElementById('configStatus');
+  if(!url.startsWith("https://script.google.com/")){
+    statusEl.className = "status err";
+    statusEl.textContent = "URL không hợp lệ.";
+    return;
+  }
+  localStorage.setItem(CONFIG_KEY, url);
+  statusEl.className = "status ok";
+  statusEl.textContent = "Đã lưu! Đang tải dữ liệu...";
+  loadMeta();
+  setTimeout(() => {
+    const sections = [document.getElementById('adminSection'), document.getElementById('adminSection2')];
+    sections.forEach(s => { if(s) s.style.display = 'none'; });
+  }, 1200);
+}
+
+function exportConfiguredFile(){
+  const url = document.getElementById('apiUrl').value.trim();
+  const statusEl = document.getElementById('exportStatus');
+  if(!url.startsWith("https://script.google.com/")){
+    statusEl.className = "status err";
+    statusEl.textContent = "Vui lòng nhập và Lưu Web App URL hợp lệ trước.";
+    return;
+  }
+  try{
+    let html = ORIGINAL_HTML;
+    // Gan URL that vao bien DEFAULT_API_URL trong file xuat ra
+    html = html.replace(
+      'const DEFAULT_API_URL = "";',
+      'const DEFAULT_API_URL = "' + url.replace(/"/g, '\\"') + '";'
+    );
+    html = "<!DOCTYPE html>\n" + html;
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = "theo_doi_tien_do_ong_congnhan.html";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    statusEl.className = "status ok";
+    statusEl.textContent = "✅ Đã tải file xuống! Gửi file 'theo_doi_tien_do_ong_congnhan.html' này cho công nhân.";
+  }catch(err){
+    statusEl.className = "status err";
+    statusEl.textContent = "Lỗi khi xuất file: " + err.message;
+  }
+}
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+async function apiGet(params){
+  const url = getApiUrl();
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`${url}?${qs}`);
+  const data = await res.json();
+  if(data.result !== "success") throw new Error(data.message || "error");
+  return data.data;
+}
+
+async function apiPost(body){
+  const url = getApiUrl();
+  const res = await fetch(url, {
+    method:"POST",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if(data.result !== "success") throw new Error(data.message || "error");
+  return data;
+}
+
+async function loadMeta(){
+  const statusEl = document.getElementById('configStatus');
+  try{
+    META = await apiGet({action:"meta"});
+    renderProjects();
+    renderChipGroup('workTypeGroup', META.workTypes, 'workType');
+    renderChipGroup('completionGroup', META.completions.map(c=>c+"%"), 'completion');
+    renderChipGroup('locationGroup', META.locations, 'location');
+    renderLeaders();
+    renderWorkerPicker();
+    statusEl.className = "status ok";
+    statusEl.textContent = "Đã kết nối và tải dữ liệu thành công!";
+  }catch(err){
+    statusEl.className = "status err";
+    statusEl.textContent = "Lỗi tải dữ liệu: " + err.message;
+  }
+}
+
+function renderLeaders(){
+  const sel = document.getElementById('leader');
+  sel.innerHTML = '<option value="">— Chọn trưởng nhóm —</option>' +
+    META.leaders.map(l=>`<option value="${l}">${l}</option>`).join('');
+}
+
+function renderProjects(){
+  const sel = document.getElementById('project');
+  sel.innerHTML = '<option value="">— Chọn dự án —</option>' +
+    META.projects.map(p=>`<option value="${p}">${p}</option>`).join('');
+}
+
+function renderChipGroup(containerId, values, key){
+  const el = document.getElementById(containerId);
+  el.innerHTML = values.map(v=>`<div class="chip" data-value="${v}" onclick="selectChip('${containerId}','${key}','${v}')">${v}</div>`).join('');
+}
+
+function selectChip(containerId, key, value){
+  selected[key] = value.replace('%','');
+  document.querySelectorAll(`#${containerId} .chip`).forEach(c=>{
+    c.classList.toggle('active', c.dataset.value === value);
+  });
+  if(key === 'pipeType') onPipeTypeChange();
+  if(key === 'workType') onPipeSelectionChange();
+}
+
+async function onProjectChange(){
+  const project = document.getElementById('project').value;
+  selected.pipeType = null;
+  document.getElementById('pipeId').innerHTML = '<option value="">— Chọn loại ống trước —</option>';
+  document.getElementById('pipeId').disabled = true;
+  hideStatusBox();
+
+  const group = document.getElementById('pipeTypeGroup');
+  if(!project){
+    group.innerHTML = '<span style="font-size:13px;color:var(--muted);">— Chọn dự án trước —</span>';
+    return;
+  }
+  group.innerHTML = '<span style="font-size:13px;color:var(--muted);">Đang tải...</span>';
+  try{
+    const pipeTypes = await apiGet({action:"pipe_types", project});
+    if(pipeTypes.length === 0){
+      group.innerHTML = '<span style="font-size:13px;color:var(--muted);">Chưa có Loại Ống nào cho dự án này trong MasterData_Pipes</span>';
+    }else{
+      renderChipGroup('pipeTypeGroup', pipeTypes, 'pipeType');
+    }
+  }catch(err){
+    group.innerHTML = '<span style="font-size:13px;color:var(--red);">Lỗi tải Loại Ống</span>';
+  }
+}
+
+async function onPipeTypeChange(){
+  await loadPipeIds();
+}
+
+async function loadPipeIds(){
+  const project = document.getElementById('project').value;
+  const pipeType = selected.pipeType;
+  const pipeSel = document.getElementById('pipeId');
+  if(!project || !pipeType){
+    pipeSel.innerHTML = '<option value="">— Chọn dự án + loại ống trước —</option>';
+    pipeSel.disabled = true;
+    return;
+  }
+  pipeSel.innerHTML = '<option value="">Đang tải...</option>';
+  pipeSel.disabled = true;
+  try{
+    const pipes = await apiGet({action:"pipes", project, pipeType});
+    if(pipes.length === 0){
+      pipeSel.innerHTML = '<option value="">Không có ống nào trong danh sách</option>';
+    }else{
+      pipeSel.innerHTML = '<option value="">— Chọn số ống —</option>' + pipes.map(p=>`<option value="${p}">${p}</option>`).join('');
+      pipeSel.disabled = false;
+    }
+  }catch(err){
+    pipeSel.innerHTML = '<option value="">Lỗi tải danh sách</option>';
+  }
+}
+
+async function onPipeSelectionChange(){
+  const project = document.getElementById('project').value;
+  const pipeType = selected.pipeType;
+  const pipeId = document.getElementById('pipeId').value;
+  const workType = selected.workType;
+  if(!project || !pipeType || !pipeId || !workType){ hideStatusBox(); return; }
+
+  const box = document.getElementById('statusBox');
+  box.style.display = 'block';
+  box.className = 'status-box';
+  box.textContent = 'Đang tra cứu trạng thái...';
+  try{
+    const status = await apiGet({action:"status", project, pipeType, pipeId, workType});
+    if(status){
+      box.className = 'status-box has-progress';
+      box.innerHTML = `📌 Cập nhật gần nhất (${status.date}): <b>${status.completion}%</b> hoàn thành — Trưởng nhóm: ${status.leader} — Nhóm: ${status.workers} — Vị trí: ${status.location}`;
+    }else{
+      box.className = 'status-box';
+      box.textContent = '📌 Ống này chưa thi công công đoạn này, bắt đầu từ 0%.';
+    }
+  }catch(err){
+    box.textContent = 'Không tra cứu được trạng thái.';
+  }
+}
+
+function hideStatusBox(){
+  document.getElementById('statusBox').style.display = 'none';
+}
+
+function renderWorkerPicker(){
+  const picker = document.getElementById('workerPicker');
+  picker.innerHTML = META.workers.map(w=>`
+    <div class="picker-item" data-value="${w}" onclick="toggleWorker('${w}')">
+      <span>${w}</span><span class="check"></span>
+    </div>
+  `).join('');
+  refreshWorkerPickerUI();
+}
+
+function toggleWorkerPicker(){
+  document.getElementById('workerPicker').classList.toggle('open');
+}
+
+function toggleWorker(name){
+  const idx = selected.workers.indexOf(name);
+  if(idx === -1) selected.workers.push(name);
+  else selected.workers.splice(idx,1);
+  refreshWorkerPickerUI();
+  renderWorkerTags();
+}
+
+function refreshWorkerPickerUI(){
+  document.querySelectorAll('#workerPicker .picker-item').forEach(item=>{
+    const isSel = selected.workers.includes(item.dataset.value);
+    item.classList.toggle('selected', isSel);
+    item.querySelector('.check').textContent = isSel ? '✓' : '';
+  });
+}
+
+function renderWorkerTags(){
+  const el = document.getElementById('workerTags');
+  el.innerHTML = selected.workers.map(w=>`
+    <span class="tag">${w} <button onclick="toggleWorker('${w}'); event.stopPropagation();">✕</button></span>
+  `).join('');
+}
+
+document.addEventListener('click', function(e){
+  const picker = document.getElementById('workerPicker');
+  const box = document.getElementById('workerPickerBox');
+  if(picker && !picker.contains(e.target) && !box.contains(e.target)){
+    picker.classList.remove('open');
+  }
+});
+
+function collectForm(){
+  return {
+    date: document.getElementById('date').value || todayStr(),
+    project: document.getElementById('project').value,
+    pipeType: selected.pipeType || "",
+    pipeId: document.getElementById('pipeId').value,
+    leader: document.getElementById('leader').value,
+    workers: selected.workers.join(", "),
+    workType: selected.workType || "",
+    completion: selected.completion || "",
+    location: selected.location || "",
+    notes: document.getElementById('notes').value.trim()
+  };
+}
+
+function validate(record){
+  const missing = [];
+  if(!record.project) missing.push("Tên Dự Án");
+  if(!record.pipeType) missing.push("Loại Ống");
+  if(!record.pipeId) missing.push("Số Ống");
+  if(!record.leader) missing.push("Trưởng Nhóm");
+  if(!record.workers) missing.push("Nhóm Viên");
+  if(!record.workType) missing.push("Loại Công Việc");
+  if(!record.completion) missing.push("Hoàn Thành");
+  if(!record.location) missing.push("Vị Trí Ống");
+  return missing;
+}
+
+async function submitEntry(){
+  const statusEl = document.getElementById('submitStatus');
+  const btn = document.getElementById('submitBtn');
+  const record = collectForm();
+  const missing = validate(record);
+
+  if(missing.length){
+    statusEl.className = "status err";
+    statusEl.textContent = "Vui lòng nhập đủ: " + missing.join(", ");
+    return;
+  }
+  if(!getApiUrl()){
+    statusEl.className = "status err";
+    statusEl.textContent = "Chưa cấu hình Web App URL.";
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.className = "status info";
+  statusEl.textContent = "Đang lưu...";
+
+  try{
+    await apiPost(record);
+    statusEl.className = "status ok";
+    statusEl.textContent = "✅ Đã lưu tiến độ thành công!";
+    // reset mot phan, giu du an + ngay de nhap tiep ong khac nhanh hon
+    selected.workers = [];
+    selected.completion = null;
+    document.getElementById('notes').value = "";
+    document.querySelectorAll('#completionGroup .chip, #locationGroup .chip').forEach(c=>c.classList.remove('active'));
+    renderWorkerTags();
+    onPipeSelectionChange();
+  }catch(err){
+    statusEl.className = "status err";
+    statusEl.textContent = "❌ Lỗi khi lưu: " + err.message;
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function toggleAdminSection(){
+  const sections = [document.getElementById('adminSection'), document.getElementById('adminSection2')];
+  const isHidden = sections[0].style.display === 'none';
+  sections.forEach(s => { if(s) s.style.display = isHidden ? 'block' : 'none'; });
+}
+
+window.onload = function(){
+  document.getElementById('date').value = todayStr();
+  const url = getApiUrl();
+  const sections = [document.getElementById('adminSection'), document.getElementById('adminSection2')];
+  if(url){
+    document.getElementById('apiUrl').value = url;
+    // Da cau hinh roi -> an admin section, chi truong nhom thay man hinh nhap lieu
+    sections.forEach(s => { if(s) s.style.display = 'none'; });
+    loadMeta();
+  }
+  // Chua cau hinh (may/thiet bi moi) -> hien san de admin setup lan dau
+};
+</script></body></html>
