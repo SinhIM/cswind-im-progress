@@ -255,7 +255,7 @@ function exportConfiguredFile(){
     let html = ORIGINAL_HTML;
     // Gan URL that vao bien DEFAULT_API_URL trong file xuat ra
     html = html.replace(
-      'const DEFAULT_API_URL = "";',
+      'const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbxFAy2fcTzfuY0PLzr8MepkTytaKksjEXLBBcpq0tXfYAAUlrR1T1fODU70KehMXDcw/exec";',
       'const DEFAULT_API_URL = "' + url.replace(/"/g, '\\"') + '";'
     );
     html = "<!DOCTYPE html>\n" + html;
