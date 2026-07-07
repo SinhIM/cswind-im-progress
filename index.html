@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="vi"><head>
+<html lang="vi">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
@@ -128,17 +129,25 @@
       <h2>⚙️ Cấu hình kết nối <span style="font-weight:400;font-size:12px;color:var(--muted);">(1 lần, chỉ Admin)</span></h2>
       <label>Web App URL</label>
       <input type="text" id="apiUrl" placeholder="https://script.google.com/macros/s/xxxx/exec">
+      <label>Token bảo mật <span style="font-weight:400;font-size:12px;color:var(--muted);">(để trống nếu chưa cài Token bên Apps Script)</span></label>
+      <input type="text" id="apiToken" placeholder="VD: cswind2026imteam">
       <button class="btn-secondary" style="margin-top:10px;" onclick="saveConfig()">Lưu / Save (dùng thử trên máy này)</button>
       <div id="configStatus" class="status"></div>
 
       <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border);">
-        <label style="margin-top:0;">📤 Chia sẻ cho công nhân</label>
+        <label style="margin-top:0;">🔗 Link cấu hình cho công nhân</label>
         <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">
-          Tải về 1 file HTML mới đã gắn sẵn URL bên trong — gửi file này (Zalo, email, USB…) cho công nhân.
-          Họ mở lên là vào thẳng màn hình nhập liệu, không thấy khung Cấu hình này.
+          Tạo 1 link đặc biệt (chứa URL + Token đã mã hóa) — gửi qua Zalo cho công nhân
+          <b>1 lần duy nhất</b>. Họ bấm vào link đó, máy sẽ tự lưu cấu hình rồi tự chuyển
+          về link gốc (sạch, không lộ URL). Từ lần sau chỉ cần mở link gốc bình thường.
+          File HTML public trên GitHub <b>không bao giờ chứa URL thật</b>.
         </p>
-        <button class="btn-secondary" style="width:100%;" onclick="exportConfiguredFile()">⬇️ Xuất file cho công nhân</button>
-        <div id="exportStatus" class="status"></div>
+        <button class="btn-secondary" style="width:100%;" onclick="generateConfigLink()">🔗 Tạo Link Cấu Hình</button>
+        <div id="linkResultBox" style="display:none; margin-top:10px;">
+          <input type="text" id="linkResult" readonly style="font-size:12px; background:#F8FAFC;">
+          <button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="copyConfigLink()">📋 Copy Link</button>
+        </div>
+        <div id="linkStatus" class="status"></div>
       </div>
     </div>
   </div>
@@ -159,7 +168,7 @@
     <div class="chip-group" id="pipeTypeGroup"><span style="font-size:13px;color:var(--muted);">— Chọn dự án trước —</span></div>
 
     <label>Số Ống <span class="req">*</span></label>
-    <select id="pipeId" disabled="" onchange="onPipeSelectionChange()">
+    <select id="pipeId" disabled onchange="onPipeSelectionChange()">
       <option value="">— Chọn dự án + loại ống trước —</option>
     </select>
 
@@ -210,23 +219,17 @@
 </div>
 
 <script>
-// Luu lai HTML goc, "sach" ngay khi trang vua tai xong (truoc khi bat ky du lieu
-// nao duoc dien vao DOM) - dung lam nguon de "xuat file cho cong nhan" ben duoi,
-// tranh bi dinh theo trang thai admin dang test (VD da chon thu du lieu).
-const ORIGINAL_HTML = document.documentElement.outerHTML;
-
-// Neu file nay duoc "xuat" boi admin (xem nut Xuat file cho cong nhan), dong duoi day
-// se duoc thay bang URL that -> may cua cong nhan mo len la dung ngay, khong can cau hinh.
-const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbxC91aULslLTu7XPuek2EcUnL6igfact57W646-irwr9hPXstjWJ8k5NCTw3lOWj_8i/exec";
-
 const CONFIG_KEY = "csw_im_progress_api_url";
+const TOKEN_KEY = "csw_im_progress_token";
 let META = { projects: [], workers: [], leaders: [], workTypes: [], locations: [], completions: [] };
 let selected = { pipeType: null, workType: null, completion: null, location: null, workers: [] };
 
-function getApiUrl(){ return localStorage.getItem(CONFIG_KEY) || DEFAULT_API_URL || ""; }
+function getApiUrl(){ return localStorage.getItem(CONFIG_KEY) || ""; }
+function getApiToken(){ return localStorage.getItem(TOKEN_KEY) || ""; }
 
 function saveConfig(){
   const url = document.getElementById('apiUrl').value.trim();
+  const token = document.getElementById('apiToken').value.trim();
   const statusEl = document.getElementById('configStatus');
   if(!url.startsWith("https://script.google.com/")){
     statusEl.className = "status err";
@@ -234,6 +237,7 @@ function saveConfig(){
     return;
   }
   localStorage.setItem(CONFIG_KEY, url);
+  localStorage.setItem(TOKEN_KEY, token);
   statusEl.className = "status ok";
   statusEl.textContent = "Đã lưu! Đang tải dữ liệu...";
   loadMeta();
@@ -243,42 +247,71 @@ function saveConfig(){
   }, 1200);
 }
 
-function exportConfiguredFile(){
+function generateConfigLink(){
   const url = document.getElementById('apiUrl').value.trim();
-  const statusEl = document.getElementById('exportStatus');
+  const token = document.getElementById('apiToken').value.trim();
+  const statusEl = document.getElementById('linkStatus');
   if(!url.startsWith("https://script.google.com/")){
     statusEl.className = "status err";
-    statusEl.textContent = "Vui lòng nhập và Lưu Web App URL hợp lệ trước.";
+    statusEl.textContent = "Vui lòng nhập Web App URL hợp lệ trước.";
     return;
   }
   try{
-    let html = ORIGINAL_HTML;
-    // Gan URL that vao bien DEFAULT_API_URL trong file xuat ra
-    html = html.replace(
-      'const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbxFAy2fcTzfuY0PLzr8MepkTytaKksjEXLBBcpq0tXfYAAUlrR1T1fODU70KehMXDcw/exec";',
-      'const DEFAULT_API_URL = "' + url.replace(/"/g, '\\"') + '";'
-    );
-    html = "<!DOCTYPE html>\n" + html;
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = "theo_doi_tien_do_ong_congnhan.html";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const payload = JSON.stringify({ u: url, t: token });
+    const encoded = btoa(unescape(encodeURIComponent(payload)));
+    const baseUrl = location.origin + location.pathname;
+    const link = `${baseUrl}?k=${encoded}`;
+    document.getElementById('linkResult').value = link;
+    document.getElementById('linkResultBox').style.display = 'block';
     statusEl.className = "status ok";
-    statusEl.textContent = "✅ Đã tải file xuống! Gửi file 'theo_doi_tien_do_ong_congnhan.html' này cho công nhân.";
+    statusEl.textContent = "✅ Đã tạo link! Gửi link này cho công nhân qua Zalo (chỉ cần bấm 1 lần).";
   }catch(err){
     statusEl.className = "status err";
-    statusEl.textContent = "Lỗi khi xuất file: " + err.message;
+    statusEl.textContent = "Lỗi khi tạo link: " + err.message;
   }
+}
+
+function copyConfigLink(){
+  const input = document.getElementById('linkResult');
+  input.select();
+  input.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(input.value).then(()=>{
+    const statusEl = document.getElementById('linkStatus');
+    statusEl.className = "status ok";
+    statusEl.textContent = "📋 Đã copy link vào clipboard!";
+  }).catch(()=>{
+    document.execCommand('copy');
+  });
+}
+
+// Neu link duoc mo kem tham so ?k=... (link cau hinh admin tao), tu dong giai ma,
+// luu URL + Token vao may nay, roi don URL tren thanh dia chi (khong lo ra ngoai nua).
+function applyConfigFromLinkIfPresent(){
+  const params = new URLSearchParams(location.search);
+  const k = params.get('k');
+  if(!k) return false;
+  try{
+    const decoded = decodeURIComponent(escape(atob(k)));
+    const payload = JSON.parse(decoded);
+    if(payload.u){
+      localStorage.setItem(CONFIG_KEY, payload.u);
+      localStorage.setItem(TOKEN_KEY, payload.t || "");
+      // Don URL, xoa tham so k khoi thanh dia chi va lich su trinh duyet
+      history.replaceState({}, document.title, location.pathname);
+      return true;
+    }
+  }catch(err){
+    console.error("Khong doc duoc link cau hinh:", err);
+  }
+  return false;
 }
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 
 async function apiGet(params){
   const url = getApiUrl();
-  const qs = new URLSearchParams(params).toString();
+  const token = getApiToken();
+  const qs = new URLSearchParams({ ...params, token }).toString();
   const res = await fetch(`${url}?${qs}`);
   const data = await res.json();
   if(data.result !== "success") throw new Error(data.message || "error");
@@ -287,10 +320,11 @@ async function apiGet(params){
 
 async function apiPost(body){
   const url = getApiUrl();
+  const token = getApiToken();
   const res = await fetch(url, {
     method:"POST",
     headers:{ "Content-Type":"text/plain;charset=utf-8" },
-    body: JSON.stringify(body)
+    body: JSON.stringify({ ...body, token })
   });
   const data = await res.json();
   if(data.result !== "success") throw new Error(data.message || "error");
@@ -544,14 +578,23 @@ function toggleAdminSection(){
 
 window.onload = function(){
   document.getElementById('date').value = todayStr();
+
+  // Neu mo bang link cau hinh (?k=...), tu dong giai ma va luu vao may nay truoc
+  applyConfigFromLinkIfPresent();
+
   const url = getApiUrl();
+  const token = getApiToken();
   const sections = [document.getElementById('adminSection'), document.getElementById('adminSection2')];
   if(url){
     document.getElementById('apiUrl').value = url;
+    document.getElementById('apiToken').value = token;
     // Da cau hinh roi -> an admin section, chi truong nhom thay man hinh nhap lieu
     sections.forEach(s => { if(s) s.style.display = 'none'; });
     loadMeta();
   }
   // Chua cau hinh (may/thiet bi moi) -> hien san de admin setup lan dau
 };
-</script></body></html>
+</script>
+
+</body>
+</html>
